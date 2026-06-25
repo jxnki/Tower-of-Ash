@@ -138,6 +138,7 @@ function initState() {
     gameOver:false, win:false,
     miniBossSpawned:false, miniBossDefeated:false,
     flashTimer:0,
+    transitioningFloor:false,
     shrinePrompt: null,   // { shrine, timer } — shows "E: Buy Draught" near shrine
   };
   totalCoins  = 0;
@@ -494,7 +495,12 @@ function updatePlayer() {
   updateShrines();
 
   // Enter door
-  if (state.door&&state.door.open&&state.keyCollected&&overlap(p,state.door)) nextFloor();
+  if (state.door&&state.door.open&&state.keyCollected&&overlap(p,state.door)) {
+    if (!state.transitioningFloor) {
+      state.transitioningFloor = true;
+      showFloorClear(state.floorIndex);
+    }
+  }
 
   // Camera
   const tx = p.x - canvas.width*0.35;
@@ -877,6 +883,7 @@ const FLOOR_NEXT_TEASE = [
 //  SCREEN: FLOOR INTRO
 // ═══════════════════════════════════════════════════════
 function showFloorIntro(floorIndex) {
+  state.transitioningFloor = false;
   const story = FLOOR_STORIES[floorIndex];
   if (!story) { launchFloor(floorIndex); return; }
 
@@ -915,7 +922,7 @@ function showFloorIntro(floorIndex) {
 // ═══════════════════════════════════════════════════════
 //  SCREEN: FLOOR CLEAR
 // ═══════════════════════════════════════════════════════
-let _clearFloorIndex = 0;
+let _clearFloorIndex = -1;
 
 function showFloorClear(clearedFloorIndex) {
   _clearFloorIndex = clearedFloorIndex;
@@ -959,6 +966,7 @@ function launchFloor(floorIndex) {
   state.floorIndex = floorIndex;
   state.gameOver   = false;
   state.win        = false;
+  state.transitioningFloor = false;
   const fd = FLOOR_DATA[floorIndex];
   document.getElementById('hud-floor').textContent = fd.name;
   document.getElementById('key-status').textContent = 'Not found';
@@ -973,9 +981,13 @@ function launchFloor(floorIndex) {
 //  FLOOR TRANSITION  (called when player exits door)
 // ═══════════════════════════════════════════════════════
 function nextFloor() {
-  const cleared = state.floorIndex;
-  if (cleared >= FLOOR_DATA.length-1) return;
-  showFloorClear(cleared);
+  const nextIndex = state.floorIndex + 1;
+  if (nextIndex >= FLOOR_DATA.length) return;
+
+  // Ensure we leave the clear screen and enter the next floor intro.
+  state.floorIndex = nextIndex;
+  state.transitioningFloor = false;
+  showFloorIntro(nextIndex);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1493,7 +1505,8 @@ function draw() {
 //  MAIN LOOP
 // ═══════════════════════════════════════════════════════
 function gameLoop() {
-  if (!state.gameOver&&!state.win) {
+  const gameActive = document.getElementById('screen-game').classList.contains('active');
+  if (gameActive && !state.gameOver && !state.win) {
     updatePlayer();
     updateEnemies();
     updateProjectiles();
@@ -1502,7 +1515,7 @@ function gameLoop() {
     updateFloatingTexts();
     updateHazardTiles();
   }
-  if (document.getElementById('screen-game').classList.contains('active')) draw();
+  if (gameActive) draw();
   requestAnimationFrame(gameLoop);
 }
 
@@ -1515,11 +1528,17 @@ function startGame() {
 }
 
 function goToTitle() {
+  // Reset stale clear-screen state so Ascend can't fire from title
+  _clearFloorIndex = -1;
+  // Freeze game logic so the loop doesn't keep mutating state off-screen
+  state.gameOver = true;
+  state.win      = true;
   showScreen('screen-title');
 }
 
 function restartAndShowIntro() {
   // Retry same floor — keep coins (halved), go straight to intro first
+  state.transitioningFloor = false;
   const floor = state.floorIndex;
   const coins = Math.floor(totalCoins * 0.5);
   const held  = draughtHeld;
@@ -1541,7 +1560,13 @@ document.getElementById('btn-intro-menu').addEventListener('click', goToTitle);
 
 // ── Floor clear buttons ──
 document.getElementById('btn-next-floor').addEventListener('click', () => {
-  showFloorIntro(_clearFloorIndex + 1);
+  // Guard: only advance if we're actually on the floor-clear screen with a valid cleared floor
+  if (!document.getElementById('screen-floor-clear').classList.contains('active')) return;
+  if (_clearFloorIndex < 0) return;
+  const nextIndex = _clearFloorIndex + 1;
+  if (nextIndex >= FLOOR_DATA.length) return;
+  state.floorIndex = nextIndex;
+  showFloorIntro(nextIndex);
 });
 document.getElementById('btn-clear-menu').addEventListener('click', goToTitle);
 
