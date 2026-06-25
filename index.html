@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tower of Ash</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════
+       TITLE SCREEN
+  ══════════════════════════════════════════════════ -->
+  <div id="screen-title" class="screen active">
+    <div class="title-bg"></div>
+    <div class="title-content">
+      <p class="title-eyebrow">A tower with no mercy</p>
+      <h1 class="title-logo">Tower<br/><span>of Ash</span></h1>
+
+      <div class="title-lore">
+        <p>
+          They say the tower appeared the night the Ashen King refused to die.<br/>
+          Five floors. Each one darker than the last. No one has ever returned.
+        </p>
+        <p>
+          Somewhere in the ash, there is a key. Somewhere at the top, there is a throne.<br/>
+          And on that throne sits something that should not still be breathing.
+        </p>
+      </div>
+
+      <div class="title-buttons">
+        <button id="btn-start" class="btn-primary">Enter the Tower</button>
+        <button id="btn-how-to-play" class="btn-secondary">How to Play</button>
+      </div>
+    </div>
+    <div class="ember-layer" id="embers"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       HOW TO PLAY SCREEN
+  ══════════════════════════════════════════════════ -->
+  <div id="screen-howtoplay" class="screen">
+    <div class="how-bg"></div>
+    <div class="how-content">
+      <h2 class="how-title">How to Play</h2>
+
+      <div class="how-grid">
+
+        <div class="how-section">
+          <h3>⚔ Controls</h3>
+          <ul>
+            <li><kbd>← →</kbd> or <kbd>A D</kbd> — Move</li>
+            <li><kbd>Z</kbd> or <kbd>Space</kbd> — Jump</li>
+            <li><kbd>X</kbd> — Swing your sword</li>
+            <li><kbd>C</kbd> — Throw a blade <span class="val">(costs 3◈)</span></li>
+            <li><kbd>E</kbd> — Buy or drink a Cinder Draught</li>
+          </ul>
+        </div>
+
+        <div class="how-section">
+          <h3>◈ Coins</h3>
+          <ul>
+            <li>Pick up coins scattered across the floor</li>
+            <li>Ground coins give <span class="val">1◈</span>, platform coins give <span class="val">2◈</span></li>
+            <li>Kill enemies for bonus coins <span class="val">(1–3◈)</span></li>
+            <li>Spend wisely — throws cost coins too</li>
+            <li>Die and you lose half your coins</li>
+          </ul>
+        </div>
+
+        <div class="how-section">
+          <h3>⚗ Cinder Draught</h3>
+          <ul>
+            <li>A healing tonic — available from <strong>Floor 3</strong> onward</li>
+            <li>Find the glowing <strong>Shrine ⚗</strong> on the floor and press <kbd>E</kbd> to buy one for <span class="val">18◈</span></li>
+            <li>Press <kbd>E</kbd> anywhere to drink it — <strong>restores ~45 HP</strong></li>
+            <li>Each use after the first heals a little less</li>
+          </ul>
+        </div>
+
+        <div class="how-section">
+          <h3>🗝 Goal</h3>
+          <ul>
+            <li>Fight through enemies to find the <strong>Key</strong></li>
+            <li>Some floors have a <strong>Mini-Boss</strong> — defeat it to unlock the door</li>
+            <li>Grab the key, then reach the <strong>Exit Door</strong></li>
+            <li>Clear all five floors and take down the <strong>Ashen King</strong></li>
+          </ul>
+        </div>
+
+        <div class="how-section how-section-wide">
+          <h3>👑 Mini-Bosses &amp; The Ashen King</h3>
+          <ul>
+            <li><strong>Mini-Bosses</strong> are large, heavily armoured enemies — much tougher than regular enemies. They appear on <strong>Floor 3</strong> (Iron Warden) and block the exit until defeated.</li>
+            <li><strong>The Ashen King</strong> is the final boss on <strong>Floor 5</strong>. He has two phases — he gets faster and starts shooting when low on health. Beat him to win.</li>
+          </ul>
+        </div>
+
+      </div>
+
+      <button id="btn-htp-back" class="btn-primary" style="margin-top:2rem;">Back to Title</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       FLOOR INTRO SCREEN (shown before each floor)
+  ══════════════════════════════════════════════════ -->
+  <div id="screen-floor-intro" class="screen">
+    <div class="intro-bg" id="intro-bg"></div>
+    <div class="intro-content">
+      <p class="intro-eyebrow" id="intro-eyebrow">Floor 1</p>
+      <h2 class="intro-title" id="intro-title">The Gate</h2>
+      <div class="intro-divider"></div>
+      <p class="intro-lore" id="intro-lore">Loading…</p>
+      <div class="intro-enemies" id="intro-enemies"></div>
+      <div class="intro-tip" id="intro-tip"></div>
+      <div class="intro-buttons">
+        <button id="btn-enter-floor" class="btn-primary">Enter Floor</button>
+        <button id="btn-intro-menu" class="btn-ghost">Return to Title</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       GAME SCREEN
+  ══════════════════════════════════════════════════ -->
+  <div id="screen-game" class="screen">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="hud">
+      <div id="hud-left">
+        <span id="hud-floor">Floor 1 — The Gate</span>
+      </div>
+
+      <div id="hud-center">
+        <div class="hud-stats">
+
+          <div class="stat-block">
+            <label class="stat-label">HP</label>
+            <div class="bar-bg">
+              <div id="bar-hp" class="bar hp-bar"></div>
+            </div>
+          </div>
+
+          <div class="stat-block coin-block">
+            <span class="coin-icon">◈</span>
+            <span id="hud-coins" class="coin-count">0</span>
+            <span class="stat-label coin-label">coins</span>
+          </div>
+
+          <div id="hud-draught" class="draught-indicator">
+            <span class="draught-flask">⚗</span>
+            <div class="draught-info">
+              <span class="draught-name">Cinder Draught</span>
+              <span class="draught-meta">
+                <span class="draught-owned">0</span> held
+                &nbsp;·&nbsp; <span class="draught-cost">18</span>◈ at shrine
+              </span>
+            </div>
+            <span class="draught-badge">F3+</span>
+          </div>
+
+        </div>
+      </div>
+
+      <div id="hud-right">
+        <span id="hud-key">🗝 <b id="key-status">Not found</b></span>
+      </div>
+    </div>
+
+    <div id="controls-hint">
+      ← → Move &nbsp;|&nbsp; Z Jump &nbsp;|&nbsp; X Attack &nbsp;|&nbsp;
+      <span id="hint-throw">C Throw (<span class="coin-hint">◈3</span>)</span>
+      &nbsp;|&nbsp; <span class="hint-draught">E — Shrine / Drink Draught</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       FLOOR CLEAR SCREEN
+  ══════════════════════════════════════════════════ -->
+  <div id="screen-floor-clear" class="screen">
+    <div class="clear-bg"></div>
+    <div class="clear-content">
+      <p class="clear-eyebrow" id="clear-eyebrow">Floor Cleared</p>
+      <h2 class="clear-title" id="clear-title">The Gate falls behind you.</h2>
+      <div class="clear-stats" id="clear-stats">
+        <!-- injected by JS -->
+      </div>
+      <p class="clear-next-label">What awaits above…</p>
+      <p class="clear-next-tease" id="clear-next-tease"></p>
+      <div class="clear-buttons">
+        <button id="btn-next-floor" class="btn-primary">Ascend</button>
+        <button id="btn-clear-menu" class="btn-ghost">Return to Title</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       WIN SCREEN
+  ══════════════════════════════════════════════════ -->
+  <div id="screen-win" class="screen">
+    <div class="overlay-content">
+      <p class="overlay-eyebrow">Victory</p>
+      <h2>The Ashen King falls.</h2>
+      <p>The tower crumbles. You descend through ash and silence.<br/>
+         The climb is over. The curse is broken.</p>
+      <div class="win-stats" id="win-stats"></div>
+      <div class="overlay-buttons">
+        <button id="btn-restart-win" class="btn-primary">Climb Again</button>
+        <button id="btn-win-menu" class="btn-ghost">Return to Title</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       DEATH SCREEN
+  ══════════════════════════════════════════════════ -->
+  <div id="screen-dead" class="screen">
+    <div class="overlay-content">
+      <p class="overlay-eyebrow">Defeated</p>
+      <h2>You fell.</h2>
+      <p class="dead-flavor" id="dead-flavor">The tower has claimed another soul.</p>
+      <p style="color:#4a3a30;font-size:0.8rem;margin-top:0.5rem;">You lose half your coins on death.</p>
+      <div class="overlay-buttons">
+        <button id="btn-restart-dead" class="btn-primary">Try Again</button>
+        <button id="btn-dead-menu" class="btn-ghost">Return to Title</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
