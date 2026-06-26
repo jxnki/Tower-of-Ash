@@ -403,12 +403,14 @@ document.addEventListener('keydown', e => {
   if (e.code==='KeyX' && state.attackTimer<=0 && state.player) {
     state.attackTimer = 22;
     state.player.attacking = true;
+    Audio.swordSwing();
   }
   if (e.code==='KeyC' && state.throwTimer<=0) {
     if (totalCoins > 0) {
       state.throwTimer = 20;
       totalCoins--;
       spawnProjectile();
+      Audio.throw();
       updateHUD();
     } else {
       const p = state.player;
@@ -423,6 +425,7 @@ document.addEventListener('keydown', e => {
       const p = state.player;
       if (p) spawnFloatingText(p.x+p.w/2, p.y-16, 'Draught obtained!', '#ff8840', 70);
       burst(state.shrinePrompt.shrine.x+24, state.shrinePrompt.shrine.y, '#ff8840', 12);
+      Audio.draughtBuy();
       updateHUD();
     }
     else if (draughtHeld > 0) {
@@ -493,7 +496,7 @@ function updatePlayer() {
   else if (state.keys['ArrowRight']||state.keys['KeyD']) { p.vx=SPEED; p.facingRight=true; }
   else p.vx*=0.7;
 
-  if ((state.keys['KeyZ']||state.keys['Space'])&&p.onGround) p.vy=JUMP_F;
+  if ((state.keys['KeyZ']||state.keys['Space'])&&p.onGround) { p.vy=JUMP_F; Audio.jump(); }
 
   p.vy = Math.min(p.vy+gravMod, 20);
   p.x+=p.vx; p.y+=p.vy;
@@ -516,7 +519,7 @@ function updatePlayer() {
     state.hazardTiles.forEach(h => {
       if (!h.active) return;
       if (p.x+p.w>h.x && p.x<h.x+h.w && p.y+p.h>=h.y && p.y+p.h<=h.y+12) {
-        if (state.invTimer<=0) { damagePlayer(6); state.invTimer=20; }
+        if (state.invTimer<=0) { damagePlayer(6); Audio.lavaBurn(); state.invTimer=20; }
       }
     });
   }
@@ -528,6 +531,7 @@ function updatePlayer() {
     ks.textContent='Found!'; ks.classList.add('found');
     if (state.miniBossDefeated) openDoor();
     spawnFloatingText(p.x+p.w/2, p.y-10, '🗝 Key!', '#d4a017', 80);
+    Audio.keyPickup();
   }
 
   // Pickup coins
@@ -537,6 +541,7 @@ function updatePlayer() {
       c.collected=true; totalCoins+=c.value;
       burst(c.x,c.y,c.col,5);
       spawnFloatingText(c.x, c.y-8, `+${c.value}`, c.col, 40);
+      Audio.coin();
       updateHUD();
     }
   });
@@ -549,6 +554,8 @@ function updatePlayer() {
   if (state.door&&state.door.open&&state.keyCollected&&overlap(p,state.door)) {
     if (!state.transitioningFloor) {
       state.transitioningFloor = true;
+      Audio.floorClear();
+      Audio.stopAmbient();
       showFloorClear(state.floorIndex);
     }
   }
@@ -559,7 +566,7 @@ function updatePlayer() {
   state.camera.x = Math.max(0, Math.min(state.camera.x, LEVEL_W-canvas.width));
 }
 
-function openDoor() { if(state.door) state.door.open=true; }
+function openDoor() { if(state.door) { state.door.open=true; Audio.doorOpen(); } }
 
 // ═══════════════════════════════════════════════════════
 //  FLOATING TEXTS
@@ -584,6 +591,7 @@ function useDraught() {
   burst(p.x+p.w/2, p.y+p.h/2, '#ff8840', 18);
   burst(p.x+p.w/2, p.y+p.h/2, '#ffcc44', 10);
   spawnFloatingText(p.x+p.w/2, p.y-16, `+${restore} HP`, '#ff8840', 80);
+  Audio.draughtUse();
   updateHUD();
 }
 
@@ -668,6 +676,7 @@ function updateEnemies() {
       if (e.aiType==='boss'&&e.phase===1&&e.hp<e.maxHp*0.5) {
         e.phase=2; e.speed*=1.5; e.col='#e06020';
         burst(e.x+e.w/2,e.y+e.h/2,'#ff8800',24);
+        Audio.phaseChange();
       }
     }
 
@@ -684,6 +693,7 @@ function updateEnemies() {
       if (overlap(hx,e) && !e._hitThisSwing) {
         e._hitThisSwing = true; // only once per swing
         e.hp-=24; e.hitFlash=10;
+        Audio.enemyHit();
 
         // Knockback varies by weight
         const kb = (e.aiType==='miniboss'||e.aiType==='boss') ? 1.5
@@ -698,6 +708,7 @@ function updateEnemies() {
           e.col = '#e8e000'; // yellow = stunned
           burst(e.x+e.w/2,e.y+e.h/2,'#ffff44',10);
           spawnFloatingText(e.x+e.w/2, e.y-10, 'STAGGER!', '#ffff44', 50);
+          Audio.stagger();
         } else {
           burst(e.x+e.w/2,e.y+e.h/2,'#ffffff',6);
         }
@@ -721,6 +732,7 @@ function updateEnemies() {
 function killEnemy(e) {
   e.dead=true;
   burst(e.x+e.w/2, e.y+e.h/2, e.col, 14);
+  Audio.enemyDeath();
   const fd=FLOOR_DATA[state.floorIndex];
 
   // Drop some coins on kill
@@ -757,6 +769,8 @@ function killEnemy(e) {
     }
   } else if (e.type==='ashenKing') {
     state.win=true;
+    Audio.stopAmbientImmediate();
+    Audio.victory();
     setTimeout(()=>showWinScreen(),1400);
   } else if (!fd.hasMiniB&&!state.key&&!state.keyCollected) {
     const alive=state.enemies.filter(x=>!x.dead).length;
@@ -855,10 +869,14 @@ function updateParticles() {
 // ═══════════════════════════════════════════════════════
 function damagePlayer(amt) {
   const p = state.player; if (!p) return;
-p.hp = Math.round(p.hp - amt); if(p.hp<0)p.hp=0;
-  state.flashTimer=10; updateHUD();
+  p.hp = Math.round(p.hp - amt); if(p.hp<0)p.hp=0;
+  state.flashTimer=10;
+  Audio.playerHurt();
+  updateHUD();
   if (p.hp<=0) {
     state.gameOver=true;
+    Audio.stopAmbientImmediate();
+    Audio.death();
     setTimeout(()=>showDeadScreen(), 700);
   }
 }
@@ -1030,6 +1048,7 @@ function unlockNextFloor(clearedIndex) {
   }
 }
 function showFloorIntro(floorIndex) {
+  Audio.stopAmbient();
   state.transitioningFloor = false;
   const story = FLOOR_STORIES[floorIndex];
   if (!story) { launchFloor(floorIndex); return; }
@@ -1138,6 +1157,7 @@ function launchFloor(floorIndex) {
   resizeCanvas();
   buildFloor();
   updateHUD();
+  Audio.startAmbient(floorIndex);
   showScreen('screen-game');
 }
 
@@ -1724,8 +1744,8 @@ function restartAndShowIntro() {
 }
 
 // ── Title buttons ──
-document.getElementById('btn-start').addEventListener('click', startGame);
-document.getElementById('btn-how-to-play').addEventListener('click', () => showScreen('screen-howtoplay'));
+document.getElementById('btn-start').addEventListener('click', () => { Audio.init(); Audio.resume(); startGame(); });
+document.getElementById('btn-how-to-play').addEventListener('click', () => { Audio.init(); Audio.resume(); showScreen('screen-howtoplay'); });
 document.getElementById('btn-htp-back').addEventListener('click', () => showScreen('screen-title'));
 
 // ── Tower menu buttons ──

@@ -181,6 +181,7 @@
 
       <div id="hud-right">
         <span id="hud-key">🗝 <b id="key-status">Not found</b></span>
+        <button id="btn-mute" onclick="toggleMuteBtn(this)" title="Toggle Audio">🔊</button>
       </div>
     </div>
 
@@ -244,6 +245,15 @@
     </div>
   </div>
 
+  <script>
+    function toggleMuteBtn(btn) {
+      Audio.init(); Audio.resume();
+      const muted = Audio.toggleMute();
+      btn.textContent = muted ? '🔇' : '🔊';
+      btn.classList.toggle('muted', muted);
+    }
+  </script>
+  <script src="audio.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

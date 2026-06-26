@@ -937,3 +937,27 @@ kbd {
   letter-spacing: 0.04em;
   margin-left: 2px;
 }
+
+/* ── Mute button in HUD ─────────────────────────────── */
+#btn-mute {
+  background: none;
+  border: 1px solid #5a4030;
+  color: #a08060;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 3px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px;
+  vertical-align: middle;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+#btn-mute:hover {
+  border-color: #c08040;
+  color: #e0b070;
+  background: rgba(120,70,20,0.18);
+}
+#btn-mute.muted {
+  border-color: #3a2a20;
+  color: #5a4030;
+}
