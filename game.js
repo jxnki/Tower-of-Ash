@@ -575,8 +575,11 @@ function updateFloatingTexts() {
 function useDraught() {
   const p = state.player; if (!p || draughtHeld <= 0) return;
   draughtHeld--;
+
   const restore = Math.max(20, DRAUGHT_HP_RESTORE - draughtUsed * 5);
-  p.hp = Math.min(p.maxHp, p.hp + restore);
+  // Keep HP as an integer at all times (avoid FP like 63.599999...)
+  p.hp = Math.min(p.maxHp, Math.round(p.hp + restore));
+
   state.invTimer = 60;
   burst(p.x+p.w/2, p.y+p.h/2, '#ff8840', 18);
   burst(p.x+p.w/2, p.y+p.h/2, '#ffcc44', 10);
@@ -852,7 +855,7 @@ function updateParticles() {
 // ═══════════════════════════════════════════════════════
 function damagePlayer(amt) {
   const p = state.player; if (!p) return;
-  p.hp -= amt; if(p.hp<0)p.hp=0;
+p.hp = Math.round(p.hp - amt); if(p.hp<0)p.hp=0;
   state.flashTimer=10; updateHUD();
   if (p.hp<=0) {
     state.gameOver=true;
