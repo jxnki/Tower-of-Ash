@@ -22,6 +22,21 @@ window.addEventListener('resize', () => {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  // Update the persistent coin badge on every screen transition
+  updateCoinBadge(id);
+}
+
+function updateCoinBadge(screenId) {
+  const badge = document.getElementById('global-coin-badge');
+  if (!badge) return;
+  // Hide on game screen (HUD handles it there) and on title before any coins earned
+  if (screenId === 'screen-game') {
+    badge.style.display = 'none';
+    return;
+  }
+  badge.style.display = totalCoins > 0 || screenId !== 'screen-title' ? 'flex' : 'none';
+  badge.querySelector('.gcb-count').textContent = totalCoins;
+  badge.querySelector('.gcb-draught').textContent = draughtHeld > 0 ? ` · ⚗ ×${draughtHeld}` : '';
 }
 
 // ── Ember particles on title ────────────────────────────
@@ -703,7 +718,31 @@ function killEnemy(e) {
   }
 }
 
-function dropKey(x,y) { state.key={x:x-12,y:y,w:24,h:24}; }
+function dropKey(x,y) {
+  // On Floor 4 (The Abyss) there's no continuous ground, so snap the key to the
+  // nearest platform surface directly below the drop point, or pick a safe platform.
+  if (state.floorIndex === 3) {
+    const floatingPlats = state.platforms.filter(p => p.h === 18);
+    // Find a platform whose x-range contains the drop x, closest one above the fall
+    let best = null;
+    for (const p of floatingPlats) {
+      if (x >= p.x && x <= p.x + p.w) {
+        if (!best || p.y < best.y) best = p;
+      }
+    }
+    // If none directly below, pick any platform reasonably in the middle of the level
+    if (!best) {
+      best = floatingPlats[Math.floor(floatingPlats.length / 2)] || floatingPlats[0];
+    }
+    if (best) {
+      const kx = best.x + best.w / 2 - 12;
+      const ky = best.y - 26;
+      state.key = { x: kx, y: ky, w: 24, h: 24 };
+      return;
+    }
+  }
+  state.key = { x: x - 12, y: y, w: 24, h: 24 };
+}
 
 // ═══════════════════════════════════════════════════════
 //  PROJECTILES
@@ -831,8 +870,8 @@ const FLOOR_STORIES = [
     lore: `Something is still burning in here. Whether it is the forge or the floor itself, you cannot tell.\nThe Imps were made here — small, fast, and joyful about all the wrong things. The Iron Warden was made here too. It has not moved from its post in forty years. It will not move aside for you either.`,
     enemies: [
       { icon:'😈', name:'Imp',         desc:'Charges fast with horns lowered. Kill them before they cluster.' },
-      { icon:'🪨', name:'Golem',        desc:'Slow, enormous, resistant to knockback. Don\'t get cornered.' },
-      { icon:'⚙',  name:'Iron Warden', desc:'MINI-BOSS. Defeat it to unlock the door. High HP, jumps.' },
+      { icon:'🗿', name:'Golem',        desc:'Slow, enormous, resistant to knockback. Don\'t get cornered.' },
+      { icon:'🛡', name:'Iron Warden', desc:'MINI-BOSS. Defeat it to unlock the door. High HP, jumps.' },
     ],
     tip: 'Tip — The Cinder Draught shrine is on this floor. Spend 18◈ to buy a charge. Press E to drink it when hurt.',
   },
@@ -840,9 +879,10 @@ const FLOOR_STORIES = [
     eyebrow: 'Floor 4',
     title: 'The Abyss',
     bgStyle: 'radial-gradient(ellipse 80% 60% at 50% 80%, #08051a 0%, #040310 50%, #020208 100%)',
-    lore: `There is no ground here. Only islands of stone floating over nothing.\nYou will not see the bottom of the Abyss. You will not want to. The Shadow Crawlers thrive in this dark — they move faster in it. The Phantom Archers have been here so long they have forgotten they ever had bodies.`,
+    lore: `You will not see the bottom of the Abyss. You will not want to. The Shadow Crawlers thrive in this dark — they move faster in it. The Phantom Archers have been here so long they have forgotten they ever had bodies.`,
+    dangerCallout: 'There is no ground here. Only islands of stone floating over nothing. Step off a platform and you fall — no coming back.',
     enemies: [
-      { icon:'🌑', name:'Shadow Crawler',  desc:'Extremely fast. Comes from below platform edges.' },
+      { icon:'🕷', name:'Shadow Crawler',  desc:'Extremely fast. Comes from below platform edges.' },
       { icon:'🏹', name:'Phantom Archer',   desc:'Shoots homing bolts. Keeps distance. Hard to close in on.' },
     ],
     tip: 'Tip — A second shrine is hidden on the platforms here. Another Draught could save your life.',
@@ -853,8 +893,8 @@ const FLOOR_STORIES = [
     bgStyle: 'radial-gradient(ellipse 80% 60% at 50% 80%, #1a1004 0%, #0c0802 50%, #060400 100%)',
     lore: `The throne room. The air is thick with ash and something older than ash.\nThe Ashen King has sat here since the tower appeared. He did not ask for this. He refused to leave. That is the same thing now. He will not speak. He will not negotiate. He will, however, die — if you make him.`,
     enemies: [
-      { icon:'🌫', name:'Ash Wraith',        desc:'Phase-walks. Unpredictable flight path. Hits hard from behind.' },
-      { icon:'⚔',  name:'Corrupted Soldier', desc:'Armoured and aggressive. High HP, paired with a spear.' },
+      { icon:'💨', name:'Ash Wraith',        desc:'Phase-walks. Unpredictable flight path. Hits hard from behind.' },
+      { icon:'⚔️',  name:'Corrupted Soldier', desc:'Armoured and aggressive. High HP, paired with a spear.' },
       { icon:'👑', name:'The Ashen King',     desc:'FINAL BOSS. Two phases. He will not go quietly.' },
     ],
     tip: 'Tip — This is the final floor. Use every resource you have left.',
@@ -911,6 +951,22 @@ function showFloorIntro(floorIndex) {
   // Tip
   const tipEl = document.getElementById('intro-tip');
   tipEl.innerHTML = story.tip.replace('Tip —', '<span>Tip</span> —');
+
+  // Danger callout (e.g. Floor 4 no-ground warning) — inject before enemy list
+  let calloutEl = document.getElementById('intro-danger-callout');
+  if (!calloutEl) {
+    calloutEl = document.createElement('div');
+    calloutEl.id = 'intro-danger-callout';
+    calloutEl.className = 'intro-danger-callout';
+    const enemyContainer2 = document.getElementById('intro-enemies');
+    enemyContainer2.parentNode.insertBefore(calloutEl, enemyContainer2);
+  }
+  if (story.dangerCallout) {
+    calloutEl.innerHTML = `<strong>⚠ Warning</strong>${story.dangerCallout}`;
+    calloutEl.style.display = 'block';
+  } else {
+    calloutEl.style.display = 'none';
+  }
 
   // Wire button for this floor
   const btn = document.getElementById('btn-enter-floor');
@@ -1614,4 +1670,14 @@ function showWinScreen() {
 }
 
 initState();
+
+// ── Global coin badge — visible on all non-game screens ──
+(function createCoinBadge() {
+  const badge = document.createElement('div');
+  badge.id = 'global-coin-badge';
+  badge.innerHTML = `<span class="gcb-icon">◈</span><span class="gcb-count">0</span><span class="gcb-label">coins</span><span class="gcb-draught"></span>`;
+  badge.style.display = 'none';
+  document.body.appendChild(badge);
+})();
+
 gameLoop();

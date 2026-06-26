@@ -509,12 +509,15 @@ kbd {
 #screen-floor-intro {
   background: #000;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  align-items: center;
+  justify-content: flex-start;
 }
 .intro-bg {
-  position: absolute; inset: 0;
+  position: fixed; inset: 0;
   pointer-events: none;
   transition: background 0.6s;
+  z-index: 0;
 }
 .intro-content {
   position: relative; z-index: 2;
@@ -524,7 +527,8 @@ kbd {
   align-items: center;
   gap: 1rem;
   max-width: 600px;
-  padding: 2rem 1.5rem;
+  width: 100%;
+  padding: 2.5rem 1.5rem 3rem;
   animation: introFadeIn 0.6s ease;
 }
 @keyframes introFadeIn {
@@ -598,6 +602,32 @@ kbd {
   text-align: center;
 }
 .intro-tip span { color: var(--gold); }
+
+.intro-danger-callout {
+  background: rgba(60, 20, 0, 0.85);
+  border: 1px solid #c0410a;
+  border-left: 3px solid #e05010;
+  padding: 0.65rem 1rem;
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: #e88040;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  margin: 0.2rem 0;
+  box-shadow: 0 0 18px rgba(192,65,10,0.25) inset;
+}
+.intro-danger-callout strong {
+  color: #ff6622;
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+  opacity: 0.8;
+}
 
 .intro-buttons {
   display: flex;
@@ -734,3 +764,50 @@ kbd {
    HUD EXTRAS
 ══════════════════════════════════════════════════════ */
 .coin-hint { color: #d4a017; }
+
+/* ─── Global coin badge (shown on all non-game screens) ── */
+#global-coin-badge {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(10,8,5,0.88);
+  border: 1px solid #3a2a10;
+  padding: 5px 12px 5px 9px;
+  pointer-events: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+.gcb-icon {
+  font-size: 1rem;
+  color: #d4a017;
+  text-shadow: 0 0 8px rgba(212,160,23,0.55);
+  line-height: 1;
+}
+.gcb-count {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: bold;
+  color: #f0c030;
+  letter-spacing: 0.04em;
+  min-width: 20px;
+  text-shadow: 0 0 8px rgba(240,180,30,0.4);
+}
+.gcb-label {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6a5a40;
+}
+.gcb-draught {
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: bold;
+  color: #c07040;
+  letter-spacing: 0.04em;
+  margin-left: 2px;
+}
