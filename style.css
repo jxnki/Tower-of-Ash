@@ -409,6 +409,132 @@ html, body {
 .btn-ghost:hover { border-color: #5a4a38; color: var(--muted); }
 
 /* ═══════════════════════════════════════════════════════
+   TOWER FLOORS MENU
+══════════════════════════════════════════════════════ */
+#screen-tower-menu {
+  background: #080604;
+  flex-direction: column;
+  overflow-y: auto;
+  align-items: center;
+  justify-content: flex-start;
+}
+.tower-menu-bg {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 100%, #2a1200 0%, transparent 65%),
+    radial-gradient(ellipse 50% 40% at 50% 0%, #180800 0%, transparent 60%),
+    #060402;
+  pointer-events: none;
+  z-index: 0;
+}
+.tower-menu-content {
+  position: relative; z-index: 2;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  max-width: 580px;
+  padding: 3rem 1.5rem 4rem;
+}
+.tower-menu-eyebrow {
+  font-size: 0.8rem;
+  font-weight: bold;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tower-menu-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.tower-menu-divider {
+  width: 60px; height: 1px;
+  background: var(--ember);
+  opacity: 0.5;
+  margin: 0.2rem 0 0.6rem;
+}
+.tower-floor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+}
+.tower-floor-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.85rem 1.2rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid #2a1e14;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  text-align: left;
+  font-family: var(--font-ui);
+  color: var(--text);
+  position: relative;
+  overflow: hidden;
+}
+.tower-floor-btn.unlocked:hover {
+  background: rgba(192,65,10,0.12);
+  border-color: var(--ember);
+}
+.tower-floor-btn.locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.tower-floor-btn.locked:hover {
+  background: rgba(255,255,255,0.015);
+  border-color: #2a1e14;
+}
+.tfb-num {
+  font-size: 1.6rem;
+  font-family: var(--font-title);
+  font-weight: 700;
+  color: var(--ember);
+  opacity: 0.6;
+  min-width: 2.2rem;
+  text-align: center;
+  line-height: 1;
+}
+.tower-floor-btn.unlocked .tfb-num { opacity: 1; }
+.tfb-info {
+  flex: 1;
+}
+.tfb-name {
+  font-size: 0.95rem;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.tower-floor-btn.locked .tfb-name { color: var(--muted); }
+.tfb-sub {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+  letter-spacing: 0.04em;
+}
+.tfb-lock {
+  font-size: 1rem;
+  color: var(--muted);
+  opacity: 0.6;
+}
+.tfb-enter {
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ember);
+}
+.tower-floor-btn.locked .tfb-enter { display: none; }
+
+/* ═══════════════════════════════════════════════════════
    HOW TO PLAY
 ══════════════════════════════════════════════════════ */
 #screen-howtoplay {

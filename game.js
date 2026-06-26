@@ -29,12 +29,12 @@ function showScreen(id) {
 function updateCoinBadge(screenId) {
   const badge = document.getElementById('global-coin-badge');
   if (!badge) return;
-  // Hide on game screen (HUD handles it there) and on title before any coins earned
-  if (screenId === 'screen-game') {
+  // Hide on game screen (HUD handles it there) and title/menu before any coins earned
+  if (screenId === 'screen-game' || screenId === 'screen-title') {
     badge.style.display = 'none';
     return;
   }
-  badge.style.display = totalCoins > 0 || screenId !== 'screen-title' ? 'flex' : 'none';
+  badge.style.display = totalCoins > 0 ? 'flex' : 'none';
   badge.querySelector('.gcb-count').textContent = totalCoins;
   badge.querySelector('.gcb-draught').textContent = draughtHeld > 0 ? ` · ⚗ ×${draughtHeld}` : '';
 }
@@ -92,7 +92,7 @@ const FLOOR_DATA = [
     groundColor:'#100e1c', groundTop:'#1a1830', wallColor:'#0c0c18',
     platColor:'#1a1830', platTop:'#302860', accent:'#7050d0',
     torchColor:'#8040ff', fogColor:'rgba(50,30,120,0.14)',
-    enemyTypes:['shadowCrawler','phantomArcher'], enemyCount:7, hasMiniB:false,
+    enemyTypes:['shadowCrawler','phantomArcher'], enemyCount:5, hasMiniB:false,
     coinColor:'#cc88ff', coinGlow:'rgba(140,60,240,0.35)',
   },
   {
@@ -116,8 +116,8 @@ const ENEMY_DEFS = {
   wraith:           { w:26,h:32, hp:28,  dmg:10, speed:2.2, col:'#8090d0', eyeCol:'#aaccff', aiType:'fly'    },
   imp:              { w:22,h:26, hp:32,  dmg:8,  speed:2.4, col:'#d04428', eyeCol:'#ffcc00', aiType:'chase'  },
   golem:            { w:40,h:44, hp:90,  dmg:20, speed:0.7, col:'#807060', eyeCol:'#ff8800', aiType:'patrol' },
-  shadowCrawler:    { w:26,h:20, hp:38,  dmg:12, speed:2.6, col:'#6040c0', eyeCol:'#cc88ff', aiType:'chase'  },
-  phantomArcher:    { w:24,h:34, hp:32,  dmg:14, speed:1.0, col:'#7060c0', eyeCol:'#8888ff', aiType:'shoot'  },
+  shadowCrawler:    { w:26,h:20, hp:38,  dmg:12, speed:1.8, col:'#6040c0', eyeCol:'#cc88ff', aiType:'chase'  },
+  phantomArcher:    { w:24,h:34, hp:32,  dmg:14, speed:0.7, col:'#7060c0', eyeCol:'#8888ff', aiType:'shoot'  },
   ashWraith:        { w:28,h:34, hp:44,  dmg:14, speed:1.9, col:'#b0a090', eyeCol:'#ffaa00', aiType:'fly'    },
   corruptedSoldier: { w:32,h:40, hp:65,  dmg:16, speed:1.3, col:'#907860', eyeCol:'#ff6600', aiType:'patrol' },
   ironWarden:       { w:56,h:60, hp:220, dmg:26, speed:0.6, col:'#a09070', eyeCol:'#ff8800', aiType:'miniboss' },
@@ -141,6 +141,9 @@ let draughtUsed = 0;
 // ═══════════════════════════════════════════════════════
 let state = {};
 
+// Global unlock state — persists across floor transitions, resets only on full new game
+let unlockedFloors = new Set([0]);
+
 function initState() {
   state = {
     floorIndex:0, player:null, enemies:[], projectiles:[],
@@ -154,7 +157,7 @@ function initState() {
     miniBossSpawned:false, miniBossDefeated:false,
     flashTimer:0,
     transitioningFloor:false,
-    shrinePrompt: null,   // { shrine, timer } — shows "E: Buy Draught" near shrine
+    shrinePrompt: null,
   };
   totalCoins  = 0;
   draughtHeld = 0;
@@ -228,36 +231,56 @@ function buildFloor() {
         [1040,gY-250,140],[1300,gY-170,160],[1560,gY-280,140],
         [1800,gY-140,160],[2020,gY-230,140],[2220,gY-180,160],
       ];
-      // Lava hazard patches on the ground
-      [140,410,650,870,1150,1430,1680,1950,2120,2380].forEach(hx => {
+      // Fewer lava patches — only 5 instead of 10, longer off-time so they're avoidable
+      [350, 800, 1300, 1750, 2200].forEach(hx => {
         state.hazardTiles.push({
-          x:hx, y:gY, w:90+Math.random()*40, h:GROUND_H,
+          x:hx, y:gY, w:80+Math.random()*30, h:GROUND_H,
           timer:0, active:true,
-          cooldown: 180+Math.floor(Math.random()*120), // how long it stays on
-          offTime:  90+Math.floor(Math.random()*60),   // how long it stays off
+          cooldown: 220+Math.floor(Math.random()*80),  // longer active before cooling
+          offTime:  140+Math.floor(Math.random()*80),  // longer safe window
         });
       });
       // Shrine on Floor 3
       state.shrines.push({ x:1280, y:gY-80, w:48, h:80 });
       break;
 
-    case 3: // The Abyss — floating islands over chasms
-      // NO continuous ground — broken segments only
-      state.platforms.push({ x:0,      y:gY, w:220,  h:GROUND_H }); // start island
-      state.platforms.push({ x:LEVEL_W-180, y:gY, w:180, h:GROUND_H }); // end island
-      plats = [
-        [280, gY-30, 130],[470, gY-80, 110],[650, gY-20, 120],
-        [830, gY-100,100],[1010,gY-40, 120],[1190,gY-120,100],
-        [1370,gY-50, 120],[1550,gY-140,100],[1720,gY-60, 120],
-        [1890,gY-100,110],[2060,gY-30, 120],[2230,gY-120,100],
-        [2390,gY-60, 120],
-        // High platforms for vertical gameplay
-        [350, gY-200,90],[700, gY-220,80],[1100,gY-240,90],
-        [1500,gY-260,80],[1900,gY-230,90],[2250,gY-250,80],
+    case 3: { // The Abyss — wide bridging platforms with traversable gaps
+      // Ground-level bridge segments — wide enough to fight on, gaps between them
+      // Segment layout: [x, width] — all at ground level (gY)
+      const bridges = [
+        [0,    300],   // start island — wide, safe spawn
+        [380,  220],   // 80px gap
+        [680,  180],   // 80px gap
+        [940,  200],   // 80px gap
+        [1220, 240],   // 80px gap — middle section, wider
+        [1540, 180],   // 80px gap
+        [1800, 200],   // 80px gap
+        [2080, 180],   // 80px gap
+        [2340, 220],   // 80px gap — end approach
+        [2640-180, 180], // end island — door here, always reachable
       ];
-      // Shrine on Floor 4
-      state.shrines.push({ x:1600, y:gY-150-80, w:48, h:80 });
+      bridges.forEach(([bx, bw]) => {
+        state.platforms.push({ x:bx, y:gY, w:bw, h:GROUND_H });
+      });
+
+      // Elevated platforms above bridges for vertical play and coin collection
+      plats = [
+        [60,  gY-160, 120],
+        [430, gY-140, 100],
+        [730, gY-180, 100],
+        [990, gY-150, 120],
+        [1270,gY-200, 110],
+        [1590,gY-160, 100],
+        [1860,gY-180, 110],
+        [2130,gY-150, 100],
+        [2390,gY-170, 120],
+      ];
+
+      // Two shrines on Floor 4 — on solid bridge ground, easy to find
+      state.shrines.push({ x:640,  y:gY-80, w:48, h:80 });
+      state.shrines.push({ x:1860, y:gY-80, w:48, h:80 });
       break;
+    }
 
     case 4: // The Throne — wide dramatic arena
       state.platforms.push({ x:0, y:gY, w:LEVEL_W, h:GROUND_H });
@@ -289,12 +312,25 @@ function buildFloor() {
   state.miniBossDefeated = !fd.hasMiniB;
 
   state.enemies = [];
-  const spacing = (LEVEL_W-350) / fd.enemyCount;
-  for (let i=0; i<fd.enemyCount; i++) {
-    const type = fd.enemyTypes[i % fd.enemyTypes.length];
-    const d    = ENEMY_DEFS[type];
-    const ex   = 350 + i*spacing + Math.random()*80;
-    state.enemies.push(createEnemy(type, ex, gY-d.h-4));
+
+  if (state.floorIndex === 3) {
+    // Floor 4: spawn enemies on known safe bridge segments (skip start and end islands)
+    const abyssBridgeSpawns = [480, 780, 1060, 1360, 1640, 1920, 2200];
+    const count = FLOOR_DATA[3].enemyCount;
+    for (let i = 0; i < count; i++) {
+      const type = FLOOR_DATA[3].enemyTypes[i % FLOOR_DATA[3].enemyTypes.length];
+      const d    = ENEMY_DEFS[type];
+      const bx   = abyssBridgeSpawns[i % abyssBridgeSpawns.length];
+      state.enemies.push(createEnemy(type, bx + Math.random()*60, gY - d.h - 4));
+    }
+  } else {
+    const spacing = (LEVEL_W-350) / fd.enemyCount;
+    for (let i=0; i<fd.enemyCount; i++) {
+      const type = fd.enemyTypes[i % fd.enemyTypes.length];
+      const d    = ENEMY_DEFS[type];
+      const ex   = 350 + i*spacing + Math.random()*80;
+      state.enemies.push(createEnemy(type, ex, gY-d.h-4));
+    }
   }
 
   if (fd.num===5) {
@@ -598,10 +634,17 @@ function updateEnemies() {
       e.y=e.flyBaseY+Math.sin(e.flyOffset)*36;
     }
     else if (e.aiType==='shoot') {
-      e.x+=Math.sign(dx)*e.speed*0.3;
+      // Keep distance — back away if player too close
+      const keepDist = 260;
+      if (Math.abs(dx) < keepDist) {
+        e.vx = -Math.sign(dx) * e.speed * 0.5;
+      } else {
+        e.vx = Math.sign(dx) * e.speed * 0.3;
+      }
+      e.x += e.vx;
       e.vy+=GRAVITY; applyCollisions(e);
       e.shootTimer++;
-      if (e.shootTimer>80) { spawnEnemyProj(e); e.shootTimer=0; }
+      if (e.shootTimer>120) { spawnEnemyProj(e); e.shootTimer=0; }
     }
     else if (e.aiType==='miniboss'||e.aiType==='boss') {
       const spd = (e.aiType==='boss'&&e.phase===2) ? e.speed*1.7 : e.speed;
@@ -719,25 +762,23 @@ function killEnemy(e) {
 }
 
 function dropKey(x,y) {
-  // On Floor 4 (The Abyss) there's no continuous ground, so snap the key to the
-  // nearest platform surface directly below the drop point, or pick a safe platform.
+  // On Floor 4 (The Abyss) snap key to nearest bridge segment at ground level
   if (state.floorIndex === 3) {
-    const floatingPlats = state.platforms.filter(p => p.h === 18);
-    // Find a platform whose x-range contains the drop x, closest one above the fall
+    const gY = canvas.height - GROUND_H;
+    // Ground-level platforms (h === GROUND_H) excluding the wall blockers
+    const bridges = state.platforms.filter(p => p.h === GROUND_H && p.w > 100);
+    // Find bridge whose x-range contains the drop x
     let best = null;
-    for (const p of floatingPlats) {
-      if (x >= p.x && x <= p.x + p.w) {
-        if (!best || p.y < best.y) best = p;
-      }
+    for (const p of bridges) {
+      if (x >= p.x + 20 && x <= p.x + p.w - 20) { best = p; break; }
     }
-    // If none directly below, pick any platform reasonably in the middle of the level
+    // Fall back to closest bridge by center distance
     if (!best) {
-      best = floatingPlats[Math.floor(floatingPlats.length / 2)] || floatingPlats[0];
+      best = bridges.reduce((a, b) =>
+        Math.abs((a.x+a.w/2)-x) < Math.abs((b.x+b.w/2)-x) ? a : b, bridges[0]);
     }
     if (best) {
-      const kx = best.x + best.w / 2 - 12;
-      const ky = best.y - 26;
-      state.key = { x: kx, y: ky, w: 24, h: 24 };
+      state.key = { x: best.x + best.w/2 - 12, y: gY - 28, w: 24, h: 24 };
       return;
     }
   }
@@ -920,8 +961,71 @@ const FLOOR_NEXT_TEASE = [
 ];
 
 // ═══════════════════════════════════════════════════════
-//  SCREEN: FLOOR INTRO
+//  TOWER FLOORS MENU
 // ═══════════════════════════════════════════════════════
+const FLOOR_SUBTITLES = [
+  'The Gate — Skeletons and Crawlers',
+  'The Graveyard — Zombies and Wraiths',
+  'The Forge — Imps, Golems, Iron Warden',
+  'The Abyss — Shadow Crawlers, Phantom Archers',
+  'The Throne — Ash Wraiths, The Ashen King',
+];
+
+function showTowerMenu() {
+  _clearFloorIndex = -1;
+  state.gameOver = true;
+  state.win = true;
+
+  const list = document.getElementById('tower-floor-list');
+  list.innerHTML = '';
+
+  FLOOR_DATA.forEach((fd, i) => {
+    const unlocked = unlockedFloors.has(i);
+    const btn = document.createElement('button');
+    btn.className = 'tower-floor-btn ' + (unlocked ? 'unlocked' : 'locked');
+    btn.innerHTML = `
+      <div class="tfb-num">${i + 1}</div>
+      <div class="tfb-info">
+        <div class="tfb-name">${fd.name.replace(/^Floor \d — /, '')}</div>
+        <div class="tfb-sub">${FLOOR_SUBTITLES[i]}</div>
+      </div>
+      ${unlocked
+        ? '<div class="tfb-enter">Enter ›</div>'
+        : '<div class="tfb-lock">🔒</div>'}`;
+    if (unlocked) {
+      btn.addEventListener('click', () => {
+        // Start fresh only for floor 1; for higher floors keep persistent coins/draughts
+        if (i === 0) {
+          initState();
+        } else {
+          state.floorIndex = i;
+          state.gameOver = false;
+          state.win = false;
+          state.transitioningFloor = false;
+        }
+        showFloorIntro(i);
+      });
+    } else {
+      btn.addEventListener('click', () => {
+        // Brief visual shake to indicate locked
+        btn.style.transition = 'transform 0.08s';
+        btn.style.transform = 'translateX(6px)';
+        setTimeout(() => { btn.style.transform = 'translateX(-4px)'; }, 80);
+        setTimeout(() => { btn.style.transform = 'translateX(0)'; }, 160);
+      });
+    }
+    list.appendChild(btn);
+  });
+
+  showScreen('screen-tower-menu');
+}
+
+function unlockNextFloor(clearedIndex) {
+  const next = clearedIndex + 1;
+  if (next < FLOOR_DATA.length) {
+    unlockedFloors.add(next);
+  }
+}
 function showFloorIntro(floorIndex) {
   state.transitioningFloor = false;
   const story = FLOOR_STORIES[floorIndex];
@@ -982,6 +1086,7 @@ let _clearFloorIndex = -1;
 
 function showFloorClear(clearedFloorIndex) {
   _clearFloorIndex = clearedFloorIndex;
+  unlockNextFloor(clearedFloorIndex);  // unlock the next floor
   const fd = FLOOR_DATA[clearedFloorIndex];
 
   document.getElementById('clear-eyebrow').textContent = `Floor ${fd.num} Cleared`;
@@ -1580,15 +1685,24 @@ function gameLoop() {
 // ═══════════════════════════════════════════════════════
 function startGame() {
   initState();
-  showFloorIntro(0);
+  unlockedFloors = new Set([0]); // fresh run resets unlock progress
+  showTowerMenu();
 }
 
 function goToTitle() {
-  // Reset stale clear-screen state so Ascend can't fire from title
+  // "Return to Title" goes to tower menu so players can see their progress
   _clearFloorIndex = -1;
-  // Freeze game logic so the loop doesn't keep mutating state off-screen
   state.gameOver = true;
   state.win      = true;
+  showTowerMenu();
+}
+
+function goToLoreTitle() {
+  // Goes all the way back to the title/lore screen
+  _clearFloorIndex = -1;
+  state.gameOver = true;
+  state.win      = true;
+  unlockedFloors = new Set([0]);
   showScreen('screen-title');
 }
 
@@ -1609,14 +1723,19 @@ function restartAndShowIntro() {
 // ── Title buttons ──
 document.getElementById('btn-start').addEventListener('click', startGame);
 document.getElementById('btn-how-to-play').addEventListener('click', () => showScreen('screen-howtoplay'));
-document.getElementById('btn-htp-back').addEventListener('click', goToTitle);
+document.getElementById('btn-htp-back').addEventListener('click', () => showScreen('screen-title'));
+
+// ── Tower menu buttons ──
+document.getElementById('btn-tower-menu-title').addEventListener('click', () => {
+  unlockedFloors = new Set([0]);
+  showScreen('screen-title');
+});
 
 // ── Floor intro buttons ──
 document.getElementById('btn-intro-menu').addEventListener('click', goToTitle);
 
 // ── Floor clear buttons ──
 document.getElementById('btn-next-floor').addEventListener('click', () => {
-  // Guard: only advance if we're actually on the floor-clear screen with a valid cleared floor
   if (!document.getElementById('screen-floor-clear').classList.contains('active')) return;
   if (_clearFloorIndex < 0) return;
   const nextIndex = _clearFloorIndex + 1;
